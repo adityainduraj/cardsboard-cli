@@ -1,6 +1,6 @@
 {
   "name": "cardsboard-cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "AI-powered design canvas for React projects - local development tool",
   "main": "dist/index.js",
   "bin": {
