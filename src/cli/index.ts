@@ -1,4 +1,3 @@
-import { config } from "dotenv";
 import { Command } from "commander";
 import express from "express";
 import path from "path";
@@ -10,17 +9,6 @@ import { setupWebSocket } from "../server/websocket";
 import chokidar from "chokidar";
 import fs from "fs";
 import { fileURLToPath } from "url";
-
-// Load environment variables from .env.local
-try {
-  const envLocalPath = path.join(process.cwd(), ".env.local");
-  if (fs.existsSync(envLocalPath)) {
-    config({ path: envLocalPath });
-    console.log("✅ Loaded environment variables from .env.local");
-  }
-} catch {
-  // Ignore errors
-}
 
 // Get __dirname equivalent for both ESM and CJS
 const getDirname = () => {
@@ -106,12 +94,13 @@ program
     // Serve static files (built canvas UI)
     // Try multiple possible locations for the canvas UI
     const possibleCanvasPaths = [
+      // Canvas is sibling to cli.js (both in dist/)
+      path.join(getDirname(), "canvas"),
       // When running from the package directory (dist/canvas)
       path.join(getDirname(), "..", "dist", "canvas"),
-      // When running from the package directory (canvas)
-      path.join(getDirname(), "..", "canvas"),
-      // When running via npx from global install
+      // When running via npx from global install (npm may put things in lib/node_modules)
       path.join(getDirname(), "..", "..", "cardsboard-cli", "dist", "canvas"),
+      path.join(getDirname(), "..", "lib", "node_modules", "cardsboard-cli", "dist", "canvas"),
       // When running from node_modules
       path.join(getDirname(), "..", "..", "..", "cardsboard-cli", "dist", "canvas"),
       // When running in development from project root

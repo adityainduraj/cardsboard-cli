@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/icons/BottomBarIcons";
 import { ArrowRightIcon } from "@/components/ui/icons/ArrowRightIcon";
 import { useAIContext } from "@/context/ai/AIContext";
+import { useApiKey } from "@/context/apikey/ApiKeyContext";
 import { ContextPreviewCard } from "./ContextPreviewCard";
 import { classifyQuery } from "@/lib/ai/classifier";
 import { calculateCardPosition, calculateVariationPositions } from "@/lib/ai/positioning";
@@ -91,6 +92,8 @@ export const BottomBar = React.memo(function BottomBar() {
     getCanvasNodes,
     getViewport,
   } = useAIContext();
+
+  const { apiKey, requestApiKey } = useApiKey();
 
   // Track line count to conditionally disable transitions
   const prevLineCountRef = useRef(1);
@@ -200,9 +203,27 @@ export const BottomBar = React.memo(function BottomBar() {
   const handleSend = useCallback(async () => {
     if (!inputValue.trim() || isLoading) return;
 
+    // Check if API key is available
+    if (!apiKey) {
+      requestApiKey();
+      return;
+    }
+
     const query = inputValue.trim();
     setInputValue("");
     setIsLoading(true);
+
+    // Helper to make AI requests with the API key
+    const aiFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+      return fetch(url, {
+        ...options,
+        headers: {
+          ...options.headers,
+          "Content-Type": "application/json",
+          "X-OpenRouter-API-Key": apiKey,
+        },
+      });
+    };
 
     try {
       // Step 1: Classify the query
@@ -212,7 +233,7 @@ export const BottomBar = React.memo(function BottomBar() {
         contextCardCount: contextCards.length,
         contextCardTypes: contextCards.map(c => c.type),
         hasSelectedCards: contextCards.length > 0,
-      });
+      }, aiFetch);
 
       console.log("Classification:", classification);
       console.log("Context cards:", contextCards);
@@ -223,9 +244,8 @@ export const BottomBar = React.memo(function BottomBar() {
         addMessage("user", query);
 
         // Stream response (but don't create a card)
-        const response = await fetch("/api/ai/stream", {
+        const response = await aiFetch("/api/ai/stream", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: [{ role: "user", content: query }],
             contextCards: contextCards,
@@ -279,9 +299,8 @@ export const BottomBar = React.memo(function BottomBar() {
         });
 
         // Stream the response
-        const response = await fetch("/api/ai/stream", {
+        const response = await aiFetch("/api/ai/stream", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: [{ role: "user", content: query }],
             contextCards: contextCards,
@@ -452,10 +471,9 @@ export const BottomBar = React.memo(function BottomBar() {
               // Image variation: use image generation API
               updatePendingCard(cardId, { content: "Calling image generation API..." });
 
-              const response = await fetch("/api/ai/generate-image", {
+              const response = await aiFetch("/api/ai/generate-image", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+                      body: JSON.stringify({
                   prompt: variationEntity ? `${query} - Focus on: ${variationEntity}` : query,
                   model: modelRecommendation,
                   contextCards: contextCards
@@ -491,10 +509,9 @@ export const BottomBar = React.memo(function BottomBar() {
               const designNode = designContext ? canvasNodesInner.find(n => n.id === designContext.nodeId) : null;
               const existingHtml = (designNode?.data as { htmlContent?: string })?.htmlContent || "";
 
-              const response = await fetch("/api/ai/stream", {
+              const response = await aiFetch("/api/ai/stream", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+                      body: JSON.stringify({
                   messages: [{
                     role: "user",
                     content: existingHtml
@@ -536,10 +553,9 @@ export const BottomBar = React.memo(function BottomBar() {
               const sketchNode = sketchContext ? canvasNodesInner.find(n => n.id === sketchContext.nodeId) : null;
               const existingElements = (sketchNode?.data as { elements?: unknown[] })?.elements || [];
 
-              const response = await fetch("/api/ai/stream", {
+              const response = await aiFetch("/api/ai/stream", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+                      body: JSON.stringify({
                   messages: [{
                     role: "user",
                     content: `Create wireframe variation ${index + 1}: ${query}`
@@ -576,10 +592,9 @@ export const BottomBar = React.memo(function BottomBar() {
               }
             } else {
               // Text variation: use stream API
-              const response = await fetch("/api/ai/stream", {
+              const response = await aiFetch("/api/ai/stream", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
+                      body: JSON.stringify({
                   messages: [{ role: "user", content: query }],
                   contextCards: contextCards,
                   model: modelRecommendation,
@@ -652,9 +667,8 @@ export const BottomBar = React.memo(function BottomBar() {
           type: "sketch",
         });
 
-        const response = await fetch("/api/ai/stream", {
+        const response = await aiFetch("/api/ai/stream", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: [{ role: "user", content: query }],
             contextCards: contextCards,
@@ -709,9 +723,8 @@ export const BottomBar = React.memo(function BottomBar() {
           type: "sketch", // Wireframes use the sketch node type (Excalidraw)
         });
 
-        const response = await fetch("/api/ai/stream", {
+        const response = await aiFetch("/api/ai/stream", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: [{ role: "user", content: query }],
             contextCards: contextCards,
@@ -766,9 +779,8 @@ export const BottomBar = React.memo(function BottomBar() {
           type: "design",
         });
 
-        const response = await fetch("/api/ai/stream", {
+        const response = await aiFetch("/api/ai/stream", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: [{ role: "user", content: query }],
             contextCards: contextCards,
@@ -820,9 +832,8 @@ export const BottomBar = React.memo(function BottomBar() {
         });
 
         // Send edit request with existing HTML
-        const response = await fetch("/api/ai/stream", {
+        const response = await aiFetch("/api/ai/stream", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: [
               { role: "user", content: `Here is the current HTML design:\n\n${existingHtml}\n\nApply this edit: ${query}` }
@@ -874,9 +885,8 @@ export const BottomBar = React.memo(function BottomBar() {
 
         updatePendingCard(cardId, { content: "Calling image generation API..." });
 
-        const response = await fetch("/api/ai/generate-image", {
+        const response = await aiFetch("/api/ai/generate-image", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             prompt: query,
             model: classification.modelRecommendation || "google/gemini-2.5-flash-image",
@@ -963,9 +973,8 @@ export const BottomBar = React.memo(function BottomBar() {
         });
 
         // 2. Call Research API
-        const response = await fetch("/api/ai/research", {
+        const response = await aiFetch("/api/ai/research", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query }),
         });
 
@@ -1023,9 +1032,8 @@ export const BottomBar = React.memo(function BottomBar() {
         });
       } else if (classification.type === "inspiration") {
         // Call Inspire API first to determine what we're getting
-        const response = await fetch("/api/ai/inspire", {
+        const response = await aiFetch("/api/ai/inspire", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ query }),
         });
 
@@ -1318,7 +1326,7 @@ export const BottomBar = React.memo(function BottomBar() {
     } finally {
       setIsLoading(false);
     }
-  }, [inputValue, isLoading, contextCards, pendingCards, addMessage, addPendingCard, updatePendingCard, currentModel, getCanvasNodes, getViewport, getDesignSystemContext]);
+  }, [inputValue, isLoading, contextCards, pendingCards, addMessage, addPendingCard, updatePendingCard, currentModel, getCanvasNodes, getViewport, getDesignSystemContext, apiKey, requestApiKey]);
 
   const handleInputKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {

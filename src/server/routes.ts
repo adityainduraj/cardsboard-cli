@@ -1,28 +1,30 @@
-import { Express } from "express";
+import { Express, Request } from "express";
 import path from "path";
 import fs from "fs";
 import OpenAI from "openai";
 
-// Lazy initialization to avoid instantiation during tests
-let _openrouter: OpenAI | null = null;
+// Import canvas management routes
+import { setupCanvasRoutes } from "./routes/canvases";
+import { setupCardsboardRoutes } from "./routes/cardsboard";
+import { setupPreviewRoutes } from "./preview-server";
 
-function getOpenRouter(): OpenAI {
-  if (!_openrouter) {
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey || apiKey === "mock-key") {
-      throw new Error("OPENROUTER_API_KEY not configured. Please set it in .env.local");
-    }
+// Lazy initialization per request - each request can have a different API key
+function getOpenRouterForRequest(req: Request): OpenAI {
+  // Get API key from header (provided by client)
+  const apiKey = req.headers["x-openrouter-api-key"] as string;
 
-    _openrouter = new OpenAI({
-      apiKey,
-      baseURL: "https://openrouter.ai/api/v1",
-      defaultHeaders: {
-        "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "https://cardsboard.app",
-        "X-Title": process.env.OPENROUTER_APP_NAME || "Cardsboard",
-      },
-    });
+  if (!apiKey) {
+    throw new Error("OPENROUTER_API_KEY not provided. Please provide it via X-OpenRouter-API-Key header.");
   }
-  return _openrouter;
+
+  return new OpenAI({
+    apiKey,
+    baseURL: "https://openrouter.ai/api/v1",
+    defaultHeaders: {
+      "HTTP-Referer": process.env.OPENROUTER_SITE_URL || "https://cardsboard.app",
+      "X-Title": process.env.OPENROUTER_APP_NAME || "Cardsboard",
+    },
+  });
 }
 
 interface AICardContext {
@@ -413,6 +415,15 @@ export function setupRoutes(
 ) {
   availableComponents = components;
 
+  // Setup canvas management routes (multi-canvas support)
+  setupCanvasRoutes(app, projectPath);
+
+  // Setup .cardsboard folder structure routes (generated, assets, guides)
+  setupCardsboardRoutes(app);
+
+  // Setup preview server routes for React component rendering
+  setupPreviewRoutes(app);
+
   // API: Get all discovered components
   app.get("/api/components", (_req, res) => {
     res.json(components);
@@ -486,11 +497,6 @@ export function setupRoutes(
     try {
       const { query, hasContextCards, contextCardCount, contextCardTypes, hasSelectedCards } = req.body;
 
-      if (!process.env.OPENROUTER_API_KEY) {
-        res.status(500).json({ error: "OPENROUTER_API_KEY not configured" });
-        return;
-      }
-
       const CLASSIFIER_PROMPT = `You are a query classifier for a canvas-based AI assistant. Your job is to analyze the user's query and determine their intent, how many cards to create, and suggest titles.
 
 CLASSIFICATION TYPES:
@@ -543,7 +549,7 @@ Context:
 
 Classify this query and determine card specifications.`;
 
-      const openrouter = getOpenRouter();
+      const openrouter = getOpenRouterForRequest(req);
       const completion = await openrouter.chat.completions.create({
         model: "google/gemini-2.5-flash",
         messages: [
@@ -641,11 +647,6 @@ Classify this query and determine card specifications.`;
         designSystemContext
       } = req.body;
 
-      if (!process.env.OPENROUTER_API_KEY) {
-        res.status(500).json({ error: "OPENROUTER_API_KEY not configured" });
-        return;
-      }
-
       const systemPrompt = buildSystemPrompt(
         contextCards,
         variationIndex,
@@ -703,7 +704,7 @@ Classify this query and determine card specifications.`;
         ];
       }
 
-      const openrouter = getOpenRouter();
+      const openrouter = getOpenRouterForRequest(req);
       const completion = await openrouter.chat.completions.create({
         model,
         messages: messagesWithSystem,
@@ -739,11 +740,6 @@ Classify this query and determine card specifications.`;
 
       if (!prompt) {
         res.status(400).json({ error: "Prompt is required" });
-        return;
-      }
-
-      if (!process.env.OPENROUTER_API_KEY) {
-        res.status(500).json({ error: "OPENROUTER_API_KEY not configured" });
         return;
       }
 
@@ -789,7 +785,7 @@ Classify this query and determine card specifications.`;
           ? `UI Design Request: ${prompt}\n\nGenerate a clean digital UI mockup with NO physical device frames.`
           : prompt;
 
-      const openrouter = getOpenRouter();
+      const openrouter = getOpenRouterForRequest(req);
       const response = await openrouter.chat.completions.create({
         model: imageModel,
         messages: [
@@ -939,7 +935,6 @@ Classify this query and determine card specifications.`;
     res.json({
       status: "ok",
       components: components.length,
-      aiConfigured: !!process.env.OPENROUTER_API_KEY,
     });
   });
 

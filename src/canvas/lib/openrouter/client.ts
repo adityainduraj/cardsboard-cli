@@ -1,8 +1,15 @@
 import OpenAI from "openai";
 
-// Lazy initialization to avoid instantiation during tests
+// Note: This client-side OpenRouter client is DEPRECATED.
+// AI requests now go through the server API with the API key provided via headers.
+// The API key is managed by the user in the UI (localStorage), not environment variables.
+
 let _openrouter: OpenAI | null = null;
 
+/**
+ * @deprecated Client-side OpenAI calls are no longer supported.
+ * Use the server API endpoints instead with the X-OpenRouter-API-Key header.
+ */
 export function getOpenRouter(): OpenAI {
   if (!_openrouter) {
     _openrouter = new OpenAI({
@@ -18,6 +25,9 @@ export function getOpenRouter(): OpenAI {
   return _openrouter;
 }
 
+/**
+ * @deprecated Use server API endpoints instead
+ */
 // Keep export for backward compatibility
 export const openrouter = new Proxy({} as OpenAI, {
   get(_, prop) {

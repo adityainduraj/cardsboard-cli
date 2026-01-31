@@ -55,9 +55,15 @@ export interface ClassifierContext {
 
 /**
  * Classify user query to determine intent and processing strategy
+ * @param context - The classification context
+ * @param aiFetch - Optional fetch function that includes API key authentication
  */
-export async function classifyQuery(context: ClassifierContext): Promise<ClassificationResult> {
-    const response = await fetch("/api/ai/classify", {
+export async function classifyQuery(
+    context: ClassifierContext,
+    aiFetch?: (url: string, options: RequestInit) => Promise<Response>
+): Promise<ClassificationResult> {
+    const fetchFn = aiFetch || fetch;
+    const response = await fetchFn("/api/ai/classify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(context),

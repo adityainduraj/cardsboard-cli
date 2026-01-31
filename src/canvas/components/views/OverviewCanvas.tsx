@@ -18,7 +18,9 @@ import {
 import "@xyflow/react/dist/style.css";
 import { NODE_TYPES, createNode, getAllNodeDefinitions } from "@/nodes/registry";
 import { BottomBar } from "@/components/ai/BottomBar";
+import { CanvasNavigator } from "@/components/CanvasNavigator";
 import { useAIContext } from "@/context/ai/AIContext";
+import { useCanvases } from "@/hooks/useCanvases";
 import { SketchNodeDrawer } from "@/components/views/nodes/SketchNodeDrawer";
 import { hydrateSketchElements } from "@/lib/ai/sketch-hydration";
 import type { DesignSystemNodeData } from "@/types/design-system";
@@ -44,7 +46,9 @@ function CanvasContent() {
     removeFromContext,
     removePendingCard
   } = useAIContext();
+  const { activeCanvas, saveActiveCanvas } = useCanvases();
   const hasLoadedRef = useRef(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get current zoom level
   const zoom = useStore((s) => s.transform[2]);
@@ -167,6 +171,61 @@ function CanvasContent() {
   useEffect(() => {
     setCanvasNodes(nodes);
   }, [nodes, setCanvasNodes]);
+
+  // Load canvas when activeCanvas changes
+  useEffect(() => {
+    if (!activeCanvas) {
+      // No active canvas - start fresh
+      if (hasLoadedRef.current) {
+        setNodes([]);
+        setEdges([]);
+      }
+      hasLoadedRef.current = true;
+      return;
+    }
+
+    // Only load if we have content and this is a different canvas
+    const canvasNodes = activeCanvas.nodes || [];
+    const canvasEdges = activeCanvas.edges || [];
+
+    setNodes(canvasNodes);
+    setEdges(canvasEdges);
+    hasLoadedRef.current = true;
+  }, [activeCanvas?.id, setNodes, setEdges]);
+
+  // Auto-save canvas when nodes or edges change (debounced)
+  useEffect(() => {
+    if (!activeCanvas?.id) return;
+
+    // Clear previous timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Debounce save to avoid excessive writes
+    saveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await saveActiveCanvas(nodes, edges);
+      } catch (err) {
+        console.error("Failed to auto-save canvas:", err);
+      }
+    }, 1000); // 1 second debounce
+
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, [nodes, edges, activeCanvas?.id, saveActiveCanvas]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Convert pending cards to nodes (both pending and complete)
   // Pending cards show as skeleton, complete cards show content
@@ -688,8 +747,9 @@ function CanvasContent() {
       // Cmd/Ctrl+S to save
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
-        // TODO: Implement save
-        console.log('Save canvas');
+        saveActiveCanvas(nodes, edges).catch(err => {
+          console.error("Failed to save canvas:", err);
+        });
         return;
       }
 
@@ -728,7 +788,7 @@ function CanvasContent() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('paste', handlePaste);
     };
-  }, [createSection, setIsAIMode, isAIMode, handlePaste]);
+  }, [createSection, setIsAIMode, isAIMode, handlePaste, saveActiveCanvas, nodes, edges]);
 
   // Track viewport changes for AI positioning - only update when movement ends (not continuously)
   const onMoveEnd = useCallback((event: any, viewport: { x: number; y: number; zoom: number }) => {
@@ -764,6 +824,11 @@ function CanvasContent() {
         {/* Background commented out like in ~/cardsboard */}
         {/* <Background color="#999999" gap={20} /> */}
         <Controls />
+
+        {/* Canvas Navigator - Top Left */}
+        <Panel position="top-left">
+          <CanvasNavigator />
+        </Panel>
 
         {/* Keyboard shortcut hint */}
         <Panel position="top-right" className="m-4">

@@ -4,13 +4,15 @@ import { z } from 'zod'
 /**
  * Runtime environment variable validation
  * For CLI mode, all variables are optional with sensible defaults
+ *
+ * Note: OPENROUTER_API_KEY is no longer read from environment variables.
+ * It is now managed by the user in the UI and stored in localStorage.
  */
 const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional().default('http://localhost'),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional().default('local'),
   NEXT_PUBLIC_AI_CONTEXT_LIMIT: z.coerce.number().min(1).max(10).optional().default(5),
   NEXT_PUBLIC_AI_DEFAULT_VARIATIONS: z.coerce.number().optional().default(3),
-  OPENROUTER_API_KEY: z.string().min(1).optional(),
   OPENROUTER_SITE_URL: z.string().url().optional().default('https://cardsboard.app'),
   OPENROUTER_APP_NAME: z.string().optional().default('Cardsboard'),
 })

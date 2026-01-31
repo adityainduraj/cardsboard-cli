@@ -51,8 +51,8 @@ export default defineConfig({
     },
   },
   // Expose env vars to client - need VITE_ prefix
+  // Note: OPENROUTER_API_KEY is NOT embedded here - it's managed by the user in the UI
   define: {
-    'process.env.OPENROUTER_API_KEY': JSON.stringify(process.env.OPENROUTER_API_KEY || ''),
     'process.env.OPENROUTER_SITE_URL': JSON.stringify(process.env.OPENROUTER_SITE_URL || 'https://cardsboard.app'),
     'process.env.OPENROUTER_APP_NAME': JSON.stringify(process.env.OPENROUTER_APP_NAME || 'Cardsboard'),
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
