@@ -4,7 +4,7 @@
   "description": "AI-powered design canvas for React projects - local development tool",
   "main": "dist/index.js",
   "bin": {
-    "cardsboard": "./dist/cli.js"
+    "cardsboard": "dist/cli.js"
   },
   "scripts": {
     "build": "npm run build:server && npm run build:canvas",
