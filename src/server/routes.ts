@@ -1013,10 +1013,10 @@ Classify this query and determine card specifications.`;
         JSON.stringify(registry, null, 2)
       );
 
-      res.json({ success: true, canvas });
+      return res.json({ success: true, canvas });
     } catch (e) {
       console.error("Failed to save active canvas:", e);
-      res.status(500).json({ error: "Failed to save active canvas" });
+      return res.status(500).json({ error: "Failed to save active canvas" });
     }
   });
 
