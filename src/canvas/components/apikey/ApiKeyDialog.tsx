@@ -4,7 +4,7 @@ import React, { useState, useCallback, useEffect } from "react";
 import { useApiKey } from "@/context/apikey/ApiKeyContext";
 
 export function ApiKeyDialog() {
-  const { isSet, setApiKey, showApiKeyDialog, dismissApiKeyDialog } = useApiKey();
+  const { isSet, setApiKey, showApiKeyDialog, dismissApiKeyDialog, clearApiKey } = useApiKey();
   const [inputValue, setInputValue] = useState("");
   const [isVisible, setIsVisible] = useState(false);
 
@@ -115,6 +115,17 @@ export function ApiKeyDialog() {
         <p className="mt-4 text-xs text-gray-500">
           Your key is stored locally in your browser and never sent to our servers.
         </p>
+
+        <button
+          type="button"
+          onClick={() => {
+            clearApiKey();
+            dismissApiKeyDialog();
+          }}
+          className="mt-2 text-xs text-red-600 hover:text-red-700 underline"
+        >
+          Clear saved key
+        </button>
       </div>
     </div>
   );

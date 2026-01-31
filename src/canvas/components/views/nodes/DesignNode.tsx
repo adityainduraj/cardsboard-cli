@@ -47,6 +47,7 @@ export default function DesignNode(props: NodeProps) {
           // HTML rendering (existing behavior)
           <div
             className="w-full h-full"
+            style={{ pointerEvents: props.selected ? 'auto' : 'none' }}
             dangerouslySetInnerHTML={{ __html: data.htmlContent }}
           />
         ) : (

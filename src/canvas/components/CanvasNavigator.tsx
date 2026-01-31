@@ -5,6 +5,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useCanvases } from "@/hooks/useCanvases";
+import { useApiKey } from "@/context/apikey/ApiKeyContext";
 
 export function CanvasNavigator() {
   const {
@@ -17,12 +18,16 @@ export function CanvasNavigator() {
     isLoading,
   } = useCanvases();
 
+  const { clearApiKey, requestApiKey } = useApiKey();
+
   const [isOpen, setIsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState("");
   const [newCanvasTitle, setNewCanvasTitle] = useState("");
   const [showNewCanvasInput, setShowNewCanvasInput] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const settingsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Close dropdown when clicking outside
@@ -32,16 +37,19 @@ export function CanvasNavigator() {
         setIsOpen(false);
         setShowNewCanvasInput(false);
       }
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
+        setIsSettingsOpen(false);
+      }
     };
 
-    if (isOpen) {
+    if (isOpen || isSettingsOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isOpen]);
+  }, [isOpen, isSettingsOpen]);
 
   // Focus input when shown
   useEffect(() => {
@@ -113,6 +121,14 @@ export function CanvasNavigator() {
       setRenameValue("");
       setNewCanvasTitle("");
     }
+  };
+
+  const handleChangeApiKey = () => {
+    clearApiKey();
+    setIsSettingsOpen(false);
+    // Dialog will automatically appear on next AI interaction
+    // Or we can force it to show immediately
+    requestApiKey();
   };
 
   return (
@@ -237,6 +253,41 @@ export function CanvasNavigator() {
                   New Canvas
                 </button>
               )}
+            </div>
+          )}
+        </div>
+
+        {/* Settings Button */}
+        <div className="relative" ref={settingsRef}>
+          <button
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            className="flex items-center gap-2 px-3 py-2 bg-white/95 backdrop-blur-sm rounded-lg shadow-sm border border-gray-200 hover:bg-white transition-colors"
+          >
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.024-2.912 2.024s-2.486-.598-2.912-2.024L4.317 12.19c-.23-.662-.038-1.32.122-1.976l3.527-3.527 1.756 2.024 2.912 2.024.23.662.038 1.32-.122 1.976l-3.527 3.527c-1.756.426-2.912-2.024-2.912s1.756-.426 2.912-2.024 2.912zM6.764 10.086l-3.52 3.52c-.75.75-1.96.426-2.656.122l2.83-2.83c.75-.75 1.96-.426 2.656-.122l3.52-3.52c.75-.75.426-1.96-.122-2.656zm9.907 7.696l3.52-3.52c.75-.75.426-1.96.122-2.656l-2.83-2.83c-.75-.75-1.96.426-2.656.122l-3.52 3.52c-.75.75-.426 1.96-.122 2.656" />
+            </svg>
+            <span className="text-sm font-medium text-gray-700">
+              Settings
+            </span>
+          </button>
+
+          {/* Settings Dropdown */}
+          {isSettingsOpen && (
+            <div className="absolute top-full left-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+              <div className="px-3 py-2">
+                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  OpenRouter
+                </div>
+                <button
+                  onClick={handleChangeApiKey}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors rounded"
+                >
+                  <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                  Change API Key
+                </button>
+              </div>
             </div>
           )}
         </div>

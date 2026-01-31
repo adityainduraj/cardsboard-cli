@@ -973,6 +973,53 @@ Classify this query and determine card specifications.`;
     }
   });
 
+  // API: Save active canvas (multi-canvas system)
+  app.post("/api/canvas/active", (req, res) => {
+    try {
+      const { id, nodes, edges } = req.body;
+
+      if (!id || typeof id !== "string") {
+        return res.status(400).json({ error: "Canvas ID is required" });
+      }
+
+      // Find the canvas file in registry
+      const registry = JSON.parse(fs.readFileSync(
+        path.join(projectPath, ".cardsboard", "canvases.json"),
+        "utf-8"
+      ));
+
+      const canvasEntry = registry.canvases.find((c: any) => c.id === id);
+
+      if (!canvasEntry) {
+        return res.status(404).json({ error: "Canvas not found" });
+      }
+
+      const canvasPath = path.join(projectPath, ".cardsboard", "canvases", canvasEntry.file);
+      const content = fs.readFileSync(canvasPath, "utf-8");
+      const canvas: any = JSON.parse(content);
+
+      // Update canvas data
+      if (nodes !== undefined) canvas.nodes = nodes;
+      if (edges !== undefined) canvas.edges = edges;
+      canvas.updatedAt = new Date().toISOString();
+
+      // Write updated canvas
+      fs.writeFileSync(canvasPath, JSON.stringify(canvas, null, 2));
+
+      // Update registry timestamp
+      canvasEntry.updatedAt = canvas.updatedAt;
+      fs.writeFileSync(
+        path.join(projectPath, ".cardsboard", "canvases.json"),
+        JSON.stringify(registry, null, 2)
+      );
+
+      res.json({ success: true, canvas });
+    } catch (e) {
+      console.error("Failed to save active canvas:", e);
+      res.status(500).json({ error: "Failed to save active canvas" });
+    }
+  });
+
   // Serve sketch editor page - handles both dev (src) and prod (dist) layouts
   app.get("/sketch-editor", (_req, res) => {
     // 1. Check relative to current directory (works in dist/ if canvas is subfolder)

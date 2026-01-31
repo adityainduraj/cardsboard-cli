@@ -797,6 +797,9 @@ function CanvasContent() {
 
   const nodeDefinitions = getAllNodeDefinitions();
 
+  // Check if any design node is selected to disable canvas pan/scroll
+  const isDesignNodeSelected = nodes.some((n) => n.selected && n.type === "design");
+
   return (
     <div className="w-full h-full relative">
       <ReactFlow
@@ -813,11 +816,11 @@ function CanvasContent() {
         selectionMode={SelectionMode.Partial}
         minZoom={0.01}
         maxZoom={10}
-        panOnScroll={true}
+        panOnScroll={!isDesignNodeSelected}
         zoomOnScroll={false}
         zoomOnPinch={true}
         zoomOnDoubleClick={false}
-        panOnDrag={false}
+        panOnDrag={!isDesignNodeSelected}
         selectionOnDrag={true}
         proOptions={{ hideAttribution: true }}
       >
