@@ -4,6 +4,7 @@ import { OverviewCanvas } from './components/views/OverviewCanvas'
 import { AuthProvider } from './context/auth/AuthContext'
 import { AIProvider } from './context/ai/AIContext'
 import { ApiKeyProvider } from './context/apikey/ApiKeyContext'
+import { CanvasesProvider } from './context/canvases/CanvasesContext'
 import { ApiKeyDialog } from './components/apikey/ApiKeyDialog'
 import './index.css'
 
@@ -13,7 +14,9 @@ createRoot(document.getElementById('root')!).render(
       <ApiKeyProvider>
         <AuthProvider>
           <AIProvider>
-            <OverviewCanvas />
+            <CanvasesProvider>
+              <OverviewCanvas />
+            </CanvasesProvider>
             <ApiKeyDialog />
           </AIProvider>
         </AuthProvider>
